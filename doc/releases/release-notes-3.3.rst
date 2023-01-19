@@ -199,6 +199,9 @@ Deprecated in this release
 
 * SPI DT :c:func:`spi_is_ready` function has been deprecated in favor of :c:func:`spi_is_ready_dt`.
 
+* LwM2M APIs using string references as LwM2M paths has been deprecated in favor of functions
+  using :c:struct:`lwm2m_path_obj` instead.
+
 Stable API changes in this release
 ==================================
 
@@ -504,6 +507,9 @@ Libraries / Subsystems
   * Added new API call `fs_mkfs`.
   * Added new sample `samples/subsys/fs/format`.
   * FAT FS driver has been updated to version 0.15 w/patch1.
+  * Added the option to disable CRC checking in :ref:`fcb_api` by enabling the
+    Kconfig option :kconfig:option:`CONFIG_FCB_ALLOW_FIXED_ENDMARKER`
+    and setting the `FCB_FLAGS_CRC_DISABLED` flag in the :c:struct:`fcb` struct.
 
 * Management
 
