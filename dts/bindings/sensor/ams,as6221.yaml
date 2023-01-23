@@ -1,0 +1,27 @@
+# Copyright (c) 2022 T-Mobile USA, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+    AMS AS6221 Digital Temperature Sensor.  See more info at
+    https://ams.com/en/as6221
+
+compatible: "ams,as6221"
+
+include: i2c-device.yaml
+
+properties:
+    conversion-rate:
+        description: Conversion rate in mHz (milli-Hertz)
+        type: int
+        default: 4000
+        enum:
+          - 250
+          - 1000
+          - 4000
+          - 8000
+    alert-gpios:
+      type: phandle-array
+      required: false
+      description: |
+        Identifies the ALERT signal, which is active-low open drain when
+        produced by the sensor.

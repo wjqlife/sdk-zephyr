@@ -1,0 +1,20 @@
+# AS6221 temperature sensor configuration options
+
+# Copyright (c) 2016 Firmwave
+# SPDX-License-Identifier: Apache-2.0
+
+config AS6221
+	bool "AS6221 Temperature Sensor"
+	default y
+	depends on DT_HAS_AMS_AS6221_ENABLED
+	select I2C
+	help
+	  Enable the driver for AMS AS6221 High-Accuracy Digital
+	  Temperature Sensors.
+
+config AS6221_SAMPLING_FREQUENCY_RUNTIME
+	bool "Allow to set conversion rate at runtime"
+	default y
+	help
+	  When set conversion rate can be set at runtime using sensor_attr_set
+	  with SENSOR_ATTR_SAMPLING_FREQUENCY
