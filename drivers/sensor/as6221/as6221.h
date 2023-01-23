@@ -34,7 +34,7 @@
 #define AS6221_REG_THIGH        0x03
 
 /* scale in micro degrees Celsius */
-#define AS6221_TEMP_SCALE       62500
+#define AS6221_TEMP_SCALE       78125
 
 struct as6221_data {
 	int16_t sample;

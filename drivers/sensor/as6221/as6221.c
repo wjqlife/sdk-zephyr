@@ -148,8 +148,12 @@ static int as6221_channel_get(const struct device *dev,
 	}
 
 	uval = (int32_t)drv_data->sample * AS6221_TEMP_SCALE;
-	val->val1 = uval / 1000000;
-	val->val2 = uval % 1000000;
+	val->val1 = uval / 10000000;
+	val->val2 = uval % 10000000;
+
+/* 	uval = (int32_t)drv_data->sample;
+	val->val1 = uval;
+	val->val2 = uval; */
 
 	return 0;
 }
