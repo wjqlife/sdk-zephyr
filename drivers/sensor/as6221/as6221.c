@@ -69,12 +69,56 @@ static int as6221_attr_set(const struct device *dev,
 {
 	uint16_t value;
 	uint16_t cr;
+	int32_t tlow, thigh, tlow_buf, thigh_buf;
 
 	if (chan != SENSOR_CHAN_AMBIENT_TEMP) {
 		return -ENOTSUP;
 	}
 
 	switch (attr) {
+	case SENSOR_ATTR_ALERT:
+#if CONFIG_AS6221_ALERT_RUNTIME
+		/* val1 stored the low limit in million times, and val2 stores the high limit in million times */
+		/* range is -40 to 125 */
+		if ((val->val1 < -40000000) || (val->val1 > 125000000) || (val->val1>=val->val2)) {
+			return -ENOTSUP;
+		}
+		else {
+			tlow = val->val1;
+		}
+		tlow_buf = tlow * AS6221_TEMP_SCALE_FACTOR / AS6221_TEMP_SCALE;
+		value = (uint16_t)(tlow_buf & 0xFFF0);
+		if (as6221_reg_write(dev->config, AS6221_REG_TLOW, value) < 0) {
+			LOG_DBG("Failed to set attribute!");
+			return -EIO;
+		}
+
+		if ((val->val2 < -40000000) || (val->val2 > 125000000) || (val->val1>=val->val2)) {
+			return -ENOTSUP;
+		}
+		else {
+			thigh = val->val2;
+		}
+		thigh_buf = thigh * AS6221_TEMP_SCALE_FACTOR / AS6221_TEMP_SCALE;
+		value = (uint16_t)(thigh_buf & 0xFFF0);
+		if (as6221_reg_write(dev->config, AS6221_REG_THIGH, value) < 0) {
+			LOG_DBG("Failed to set attribute!");
+			return -EIO;
+		}
+		break;
+#endif
+	case SENSOR_ATTR_CONFIGURATION:
+#if CONFIG_AS6221_CONFIGURATION_RUNTIME
+		/* configuration bits order: SINGLE_SHOT(BIT15), CONSECUTIVE FAULTS1(BIT12), CONSECUTIVE FAULTS2(BIT11), POLARITY(BIT10), INTERRUPT MODE(BIT9), and SLEEP MODE(BIT8) */
+		value = val->val1 & AS6221_CONFIG_COMBO;
+
+		if (as6221_update_config(dev, AS6221_CONFIG_MASK, value) < 0) {
+			LOG_DBG("Failed to set attribute!");
+			return -EIO;
+		}
+
+		break;
+#endif
 	case SENSOR_ATTR_SAMPLING_FREQUENCY:
 #if CONFIG_AS6221_SAMPLING_FREQUENCY_RUNTIME
 		/* conversion rate in mHz */
@@ -118,6 +162,54 @@ static int as6221_attr_set(const struct device *dev,
 	return 0;
 }
 
+static int as6221_attr_get(const struct device * dev, 
+			   enum sensor_channel chan, 
+			   enum sensor_attribute attr, 
+			   struct sensor_value * val)
+{
+	struct as6221_data *drv_data = dev->data;
+	const struct as6221_config *cfg = dev->config;
+	uint16_t reg_val;
+
+	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL || chan == SENSOR_CHAN_AMBIENT_TEMP);
+
+	switch (attr) {
+	case SENSOR_ATTR_ALERT:
+#if CONFIG_AS6221_ALERT_RUNTIME
+		if (as6221_reg_read(cfg, AS6221_REG_TLOW, &reg_val) < 0) {
+			return -EIO;
+		}
+		val->val1 = reg_val;
+		if (as6221_reg_read(cfg, AS6221_REG_THIGH, &reg_val) < 0) {
+			return -EIO;
+		}
+		val->val2 = reg_val;		
+		break;
+#endif
+	case SENSOR_ATTR_CONFIGURATION:
+#if CONFIG_AS6221_CONFIGURATION_RUNTIME
+		if (as6221_reg_read(cfg, AS6221_REG_CONFIG, &reg_val) < 0) {
+			return -EIO;
+		}
+		val->val1 = reg_val;
+		break;
+#endif
+	case SENSOR_ATTR_SAMPLING_FREQUENCY:
+#if CONFIG_AS6221_SAMPLING_FREQUENCY_RUNTIME
+		if (as6221_reg_read(cfg, AS6221_REG_CONFIG, &reg_val) < 0) {
+			return -EIO;
+		}
+		val->val1 = reg_val & AS6221_CONV_RATE_MASK;
+		break;
+#endif
+
+	default:
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
 static int as6221_sample_fetch(const struct device *dev,
 			       enum sensor_channel chan)
 {
@@ -147,9 +239,9 @@ static int as6221_channel_get(const struct device *dev,
 		return -ENOTSUP;
 	}
 
-	uval = (int32_t)drv_data->sample * AS6221_TEMP_SCALE;
-	val->val1 = uval / 10000000;
-	val->val2 = uval % 10000000;
+	uval = (int32_t)drv_data->sample * AS6221_TEMP_SCALE / AS6221_TEMP_SCALE_FACTOR;
+	val->val1 = uval / 1000000;
+	val->val2 = uval % 1000000;
 
 /* 	uval = (int32_t)drv_data->sample;
 	val->val1 = uval;
@@ -160,6 +252,7 @@ static int as6221_channel_get(const struct device *dev,
 
 static const struct sensor_driver_api as6221_driver_api = {
 	.attr_set = as6221_attr_set,
+	.attr_get = as6221_attr_get,
 	.sample_fetch = as6221_sample_fetch,
 	.channel_get = as6221_channel_get,
 };
@@ -174,7 +267,7 @@ int as6221_init(const struct device *dev)
 		return -EINVAL;
 	}
 
-	data->config_reg = AS6221_CONV_RATE(cfg->cr) | AS6221_CONV_RES_MASK;
+	data->config_reg = AS6221_CONV_RATE(cfg->cr);
 
 	return as6221_update_config(dev, 0, 0);
 }

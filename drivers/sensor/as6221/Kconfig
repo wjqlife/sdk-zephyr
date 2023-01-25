@@ -18,3 +18,17 @@ config AS6221_SAMPLING_FREQUENCY_RUNTIME
 	help
 	  When set conversion rate can be set at runtime using sensor_attr_set
 	  with SENSOR_ATTR_SAMPLING_FREQUENCY
+
+config AS6221_ALERT_RUNTIME
+	bool "Allow to set alert low/high limit at runtime"
+	default y
+	help
+	  When set low limit is set in val1, and high limit is set in val2 at runtime using sensor_attr_set
+	  with SENSOR_ATTR_ALERT
+	  
+config AS6221_CONFIGURATION_RUNTIME
+	bool "Allow to set configurations and modes at runtime"
+	default y
+	help
+	  When set the configuration is set in the 16 bit LSB of val1 per sequence SINGLE_SHOT(BIT15), CONSECUTIVE FAULTS1(BIT12), CONSECUTIVE FAULTS2(BIT11), POLARITY(BIT10), INTERRUPT MODE(BIT9), and SLEEP MODE(BIT8) using sensor_attr_set
+	  with SENSOR_ATTR_CONFIGURATION
