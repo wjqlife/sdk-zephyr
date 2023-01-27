@@ -9,6 +9,7 @@
 
 #include <zephyr/device.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/drivers/gpio.h>
 
 #define AS6221_REG_TEMPERATURE          0x00
 
@@ -49,6 +50,9 @@ struct as6221_data {
 struct as6221_config {
 	const struct i2c_dt_spec bus;
 	uint8_t cr;
+#ifdef CONFIG_AS6221_TRIGGER
+	struct gpio_dt_spec int_gpio;
+#endif /* CONFIG_AS6221_TRIGGER */
 };
 
 #endif

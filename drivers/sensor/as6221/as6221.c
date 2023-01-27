@@ -210,6 +210,13 @@ static int as6221_attr_get(const struct device * dev,
 	return 0;
 }
 
+static int as6221_trigger_set(const struct device *dev,
+				   const struct sensor_trigger *trig,
+				   sensor_trigger_handler_t handler)
+{
+	
+}
+
 static int as6221_sample_fetch(const struct device *dev,
 			       enum sensor_channel chan)
 {
@@ -243,16 +250,13 @@ static int as6221_channel_get(const struct device *dev,
 	val->val1 = uval / 1000000;
 	val->val2 = uval % 1000000;
 
-/* 	uval = (int32_t)drv_data->sample;
-	val->val1 = uval;
-	val->val2 = uval; */
-
 	return 0;
 }
 
 static const struct sensor_driver_api as6221_driver_api = {
 	.attr_set = as6221_attr_set,
 	.attr_get = as6221_attr_get,
+	.trigger_set = as6221_trigger_set,
 	.sample_fetch = as6221_sample_fetch,
 	.channel_get = as6221_channel_get,
 };
@@ -278,6 +282,8 @@ int as6221_init(const struct device *dev)
 	static const struct as6221_config as6221_config_##inst = {	    \
 		.bus = I2C_DT_SPEC_INST_GET(inst),			    \
 		.cr = DT_INST_ENUM_IDX(inst, conversion_rate),		    \
+IF_ENABLED(CONFIG_AS6221_TRIGGER,						\
+		   (.int_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, int_gpios, { 0 }),))	\
 	};								    \
 									    \
 	SENSOR_DEVICE_DT_INST_DEFINE(inst, as6221_init, NULL, &as6221_data_##inst, \

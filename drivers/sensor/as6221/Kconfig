@@ -32,3 +32,9 @@ config AS6221_CONFIGURATION_RUNTIME
 	help
 	  When set the configuration is set in the 16 bit LSB of val1 per sequence SINGLE_SHOT(BIT15), CONSECUTIVE FAULTS1(BIT12), CONSECUTIVE FAULTS2(BIT11), POLARITY(BIT10), INTERRUPT MODE(BIT9), and SLEEP MODE(BIT8) using sensor_attr_set
 	  with SENSOR_ATTR_CONFIGURATION
+	  
+config AS6221_TRIGGER
+	bool "Allow to enable/disable alert interrupt pin"
+	default y
+	help
+		When set use sensor_trigger_set to configure

@@ -23,5 +23,7 @@ properties:
       type: phandle-array
       required: false
       description: |
+        ALERT pin
+
         Identifies the ALERT signal, which is active-low open drain when
         produced by the sensor.
