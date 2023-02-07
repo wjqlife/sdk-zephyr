@@ -3,7 +3,7 @@
 # Copyright (c) 2016 Firmwave
 # SPDX-License-Identifier: Apache-2.0
 
-config AS6221
+menuconfig AS6221
 	bool "AS6221 Temperature Sensor"
 	default y
 	depends on DT_HAS_AMS_AS6221_ENABLED
@@ -12,6 +12,7 @@ config AS6221
 	  Enable the driver for AMS AS6221 High-Accuracy Digital
 	  Temperature Sensors.
 
+if AS6221
 config AS6221_SAMPLING_FREQUENCY_RUNTIME
 	bool "Allow to set conversion rate at runtime"
 	default y
@@ -19,22 +20,59 @@ config AS6221_SAMPLING_FREQUENCY_RUNTIME
 	  When set conversion rate can be set at runtime using sensor_attr_set
 	  with SENSOR_ATTR_SAMPLING_FREQUENCY
 
-config AS6221_ALERT_RUNTIME
-	bool "Allow to set alert low/high limit at runtime"
-	default y
-	help
-	  When set low limit is set in val1, and high limit is set in val2 at runtime using sensor_attr_set
-	  with SENSOR_ATTR_ALERT
-	  
 config AS6221_CONFIGURATION_RUNTIME
 	bool "Allow to set configurations and modes at runtime"
 	default y
 	help
 	  When set the configuration is set in the 16 bit LSB of val1 per sequence SINGLE_SHOT(BIT15), CONSECUTIVE FAULTS1(BIT12), CONSECUTIVE FAULTS2(BIT11), POLARITY(BIT10), INTERRUPT MODE(BIT9), and SLEEP MODE(BIT8) using sensor_attr_set
 	  with SENSOR_ATTR_CONFIGURATION
-	  
-config AS6221_TRIGGER
-	bool "Allow to enable/disable alert interrupt pin"
-	default y
+
+config AS6221_TEMP_CRIT
+	int "Critical overtemperature in °C"
+	range -40 150
+	default 147
 	help
-		When set use sensor_trigger_set to configure
+	  The critical overtemperature pin asserts when the temperature
+	  exceeds this value. The default value of 147 is the reset default
+	  of the AS6221.
+
+choice
+	prompt "Trigger mode"
+	default AS6221_TRIGGER_NONE
+	help
+	  Specify the type of triggering used by the driver.
+
+config AS6221_TRIGGER_NONE
+	bool "No trigger"
+
+config AS6221_TRIGGER_GLOBAL_THREAD
+	bool "Use global thread"
+	depends on GPIO
+	select AS6221_TRIGGER
+
+config AS6221_TRIGGER_OWN_THREAD
+	bool "Use own thread"
+	depends on GPIO
+	select AS6221_TRIGGER
+
+endchoice
+
+config AS6221_TRIGGER
+	bool
+
+config AS6221_THREAD_PRIORITY
+	int "Thread priority"
+	depends on AS6221_TRIGGER_OWN_THREAD && AS6221_TRIGGER
+	default 10
+	help
+	  Priority of thread used by the driver to handle interrupts.
+
+config AS6221_THREAD_STACK_SIZE
+	int "Thread stack size"
+	depends on AS6221_TRIGGER_OWN_THREAD && AS6221_TRIGGER
+	default 1024
+	help
+	  Stack size of thread used by the driver to handle interrupts.
+
+endif # AS6221
+

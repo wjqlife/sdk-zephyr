@@ -67,42 +67,59 @@ static int as6221_attr_set(const struct device *dev,
 			   enum sensor_attribute attr,
 			   const struct sensor_value *val)
 {
-	uint16_t value;
-	uint16_t cr;
-	int32_t tlow, thigh, tlow_buf, thigh_buf;
+	uint16_t value, cr, reg_val;
+	const struct as6221_config *cfg = dev->config;
+	int32_t reg_temp_upper, reg_temp_lower, buf_temp_upper, buf_temp_lower;
 
 	if (chan != SENSOR_CHAN_AMBIENT_TEMP) {
 		return -ENOTSUP;
 	}
 
 	switch (attr) {
-	case SENSOR_ATTR_ALERT:
-#if CONFIG_AS6221_ALERT_RUNTIME
-		/* val1 stored the low limit in million times, and val2 stores the high limit in million times */
+	case SENSOR_ATTR_LOWER_THRESH:
+#if CONFIG_AS6221_CONFIGURATION_RUNTIME
+		/* val1 stored the limit in million times*/
 		/* range is -40 to 125 */
-		if ((val->val1 < -40000000) || (val->val1 > 125000000) || (val->val1>=val->val2)) {
-			return -ENOTSUP;
-		}
-		else {
-			tlow = val->val1;
-		}
-		tlow_buf = tlow * AS6221_TEMP_SCALE_FACTOR / AS6221_TEMP_SCALE;
-		value = (uint16_t)(tlow_buf & 0xFFF0);
-		if (as6221_reg_write(dev->config, AS6221_REG_TLOW, value) < 0) {
-			LOG_DBG("Failed to set attribute!");
+		if (as6221_reg_read(cfg, AS6221_REG_THIGH, &reg_val) < 0) {
+			LOG_DBG("Failed to read upper temperature threshold!");
 			return -EIO;
 		}
-
-		if ((val->val2 < -40000000) || (val->val2 > 125000000) || (val->val1>=val->val2)) {
+		reg_temp_upper = (int32_t)reg_val * AS6221_TEMP_SCALE / AS6221_TEMP_SCALE_FACTOR;
+		if ((val->val1 < -40000000) || (val->val1 > 125000000) || (val->val1>reg_temp_upper)) {
+			LOG_DBG("Lower temperature threshold set value out of range!");
+			return -EOVERFLOW;
+		}
+		else {
+			reg_temp_lower = val->val1;
+		}
+		buf_temp_lower = reg_temp_lower * AS6221_TEMP_SCALE_FACTOR / AS6221_TEMP_SCALE;
+		value = (uint16_t)(buf_temp_lower & 0xFFF0);
+		if (as6221_reg_write(dev->config, AS6221_REG_TLOW, value) < 0) {
+			LOG_DBG("Failed to write lower temperature threshold!");
+			return -EIO;
+		}
+		break;
+#endif
+	case SENSOR_ATTR_UPPER_THRESH:
+#if CONFIG_AS6221_CONFIGURATION_RUNTIME
+		/* val1 stored the limit in million times*/
+		/* range is -40 to 125 */
+		if (as6221_reg_read(cfg, AS6221_REG_TLOW, &reg_val) < 0) {
+			LOG_DBG("Failed to read lower temperature threshold!");
+			return -EIO;
+		}
+		reg_temp_lower = (int32_t)reg_val * AS6221_TEMP_SCALE / AS6221_TEMP_SCALE_FACTOR;
+		if ((val->val1 < -40000000) || (val->val1 > 125000000) || (val->val1<reg_temp_lower)) {
+			LOG_DBG("Upper temperature threshold set value out of range!");
 			return -ENOTSUP;
 		}
 		else {
-			thigh = val->val2;
+			reg_temp_upper = val->val1;
 		}
-		thigh_buf = thigh * AS6221_TEMP_SCALE_FACTOR / AS6221_TEMP_SCALE;
-		value = (uint16_t)(thigh_buf & 0xFFF0);
+		buf_temp_upper = reg_temp_upper * AS6221_TEMP_SCALE_FACTOR / AS6221_TEMP_SCALE;
+		value = (uint16_t)(buf_temp_upper & 0xFFF0);
 		if (as6221_reg_write(dev->config, AS6221_REG_THIGH, value) < 0) {
-			LOG_DBG("Failed to set attribute!");
+			LOG_DBG("Failed to write upper temperature threshold!");
 			return -EIO;
 		}
 		break;
@@ -113,7 +130,7 @@ static int as6221_attr_set(const struct device *dev,
 		value = val->val1 & AS6221_CONFIG_COMBO;
 
 		if (as6221_update_config(dev, AS6221_CONFIG_MASK, value) < 0) {
-			LOG_DBG("Failed to set attribute!");
+			LOG_DBG("Failed to update configuration!");
 			return -EIO;
 		}
 
@@ -148,7 +165,7 @@ static int as6221_attr_set(const struct device *dev,
 		}
 
 		if (as6221_update_config(dev, AS6221_CONV_RATE_MASK, value) < 0) {
-			LOG_DBG("Failed to set attribute!");
+			LOG_DBG("Failed to set conversion rate!");
 			return -EIO;
 		}
 
@@ -174,35 +191,34 @@ static int as6221_attr_get(const struct device * dev,
 	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL || chan == SENSOR_CHAN_AMBIENT_TEMP);
 
 	switch (attr) {
-	case SENSOR_ATTR_ALERT:
-#if CONFIG_AS6221_ALERT_RUNTIME
+	case SENSOR_ATTR_LOWER_THRESH:
 		if (as6221_reg_read(cfg, AS6221_REG_TLOW, &reg_val) < 0) {
+			LOG_DBG("Failed to read lower temperature threshold!");
 			return -EIO;
 		}
 		val->val1 = reg_val;
+		break;
+	case SENSOR_ATTR_UPPER_THRESH:
 		if (as6221_reg_read(cfg, AS6221_REG_THIGH, &reg_val) < 0) {
-			return -EIO;
-		}
-		val->val2 = reg_val;		
-		break;
-#endif
-	case SENSOR_ATTR_CONFIGURATION:
-#if CONFIG_AS6221_CONFIGURATION_RUNTIME
-		if (as6221_reg_read(cfg, AS6221_REG_CONFIG, &reg_val) < 0) {
+			LOG_DBG("Failed to upper lower temperature threshold!");
 			return -EIO;
 		}
 		val->val1 = reg_val;
 		break;
-#endif
-	case SENSOR_ATTR_SAMPLING_FREQUENCY:
-#if CONFIG_AS6221_SAMPLING_FREQUENCY_RUNTIME
+	case SENSOR_ATTR_CONFIGURATION:
 		if (as6221_reg_read(cfg, AS6221_REG_CONFIG, &reg_val) < 0) {
+			LOG_DBG("Failed to read configuration setting!");
+			return -EIO;
+		}
+		val->val1 = reg_val;
+		break;
+	case SENSOR_ATTR_SAMPLING_FREQUENCY:
+		if (as6221_reg_read(cfg, AS6221_REG_CONFIG, &reg_val) < 0) {
+			LOG_DBG("Failed to read conversion rate setting!");
 			return -EIO;
 		}
 		val->val1 = reg_val & AS6221_CONV_RATE_MASK;
 		break;
-#endif
-
 	default:
 		return -ENOTSUP;
 	}
@@ -227,6 +243,7 @@ static int as6221_sample_fetch(const struct device *dev,
 	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL || chan == SENSOR_CHAN_AMBIENT_TEMP);
 
 	if (as6221_reg_read(cfg, AS6221_REG_TEMPERATURE, &val) < 0) {
+		LOG_DBG("Failed to read temperature register!");
 		return -EIO;
 	}
 	
